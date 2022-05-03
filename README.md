@@ -22,9 +22,9 @@ wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - 
 source ~/.zshrc
 ```
 切换zsh主题，花里胡哨的例如这种
-![zsh theme bullet-train]
+![zsh theme bullet-train](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-51.png)
 正常一点的例如这种
-![zsh theme jonathan]
+![zsh theme jonathan](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-56.png)
 ## 安装MySQL
 [来自segmentfault的强力小磊哥](https://segmentfault.com/a/1190000022843273)
 按照这个来会有点问题，在安装MySQL时会不成功，请参考[这个(打不开就翻墙)](https://forums.cpanel.net/threads/cpanel-whm-update-failure-in-upcp-script-mysql-5-7-community-server-yum-issue.697225/)
@@ -37,12 +37,12 @@ source ~/.zshrc
 mysql -h ipaddress -uusrname -ppassword
 ```
 例如下面这样
-![MySQL remote]
+![MySQL remote](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-12.png)
 如果你装过Oracle，你会感叹这个安装真是太简单，太现代化了(想起来oracle的监听程序我就想吐)。
 ## 使用可视化软件远程管理MySQL
 如果是轻量化的操作可以选择[Beekeeper Studio](https://www.beekeeperstudio.io/)
 如果是有其他的需求，可以看一下这个推荐[来自卡拉云的蒋川](https://kalacloud.com/blog/best-mysql-gui-tools/)
-![Beekeeper Studio]
+![Beekeeper Studio](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-17.png)
 ## 使用编程语言远程连接MySQL
 这里指的是Linux下Cmake编译的CPP项目
 这里我使用的客户端是Ubuntu 20.04LTS
