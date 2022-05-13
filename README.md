@@ -90,3 +90,5 @@ set(CMAKE_CXX_STANDARD 14)
 add_executable(TestConnect main.cpp)
 target_link_libraries(${PROJECT_NAME} libmysqlclient.so)
 ```
+
+# 使用socket进行数据传输
