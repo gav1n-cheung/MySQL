@@ -95,6 +95,7 @@ target_link_libraries(${PROJECT_NAME} libmysqlclient.so)
 ## 安装VSCode
 这没啥好说的
 ## 安装Remote Develop插件
+![安装插件](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-15.png)
 进行测试
 ```
 F1
@@ -120,6 +121,7 @@ Host (连接名称)
     IdentityFile "~/.ssh/id_rsa"(你创建的私钥的位置，默认就是这个)
 ```
 这样配完了之后，在这里找到你的远程连接,右键选择连接方式即可
+![配置完成的连接](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-28.png)
 # 使用socket进行数据传输
 这里使用的是C风格的代码
 ## 本地测试
