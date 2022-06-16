@@ -4,16 +4,18 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <iomanip>
+#include "omp.h"
 
 using namespace std;
 
 int main() {
     cout<<setiosflags(ios::fixed)<<setprecision(2);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::io::loadPCDFile("scans.pcd", *cloud);
+    pcl::io::loadPCDFile("/home/scy/script/gittest/MySQL/SQLTest/scans.pcd", *cloud);
 //    pcl::visualization::CloudViewer viewer("input file visualization");
 //    viewer.showCloud(cloud);
 //    while(!viewer.wasStopped()){}
+    double t1 = omp_get_wtime();
     MYSQL mysql;
     mysql_init(&mysql);
     const string host = "43.138.55.15";
@@ -24,6 +26,7 @@ int main() {
         cout << "connect mysql failed!" << mysql_error(&mysql) << endl;
     else
         cout << "connect mysql success!" << endl;
+    double t2 = omp_get_wtime();
     int index = 0;
     string sql = "insert into table3(x,y,z) values";
     for (auto item: *cloud) {
@@ -48,6 +51,7 @@ int main() {
     if (mysql_query(&mysql, sql.c_str())) cout << "mysql_real_query faild!" << endl;
     else cout<<"query success"<<endl;
     sql = "insert into table3(x,y,z) values";
+    double t3 = omp_get_wtime();
 
 //    cout<<sql<<endl;
 
@@ -85,5 +89,9 @@ int main() {
 //        cout<<"\n==============================="<<endl;
 //    }
     mysql_close(&mysql);
+
+    std::cout<<t2-t1<<std::endl;
+    std::cout<<t3-t2<<std::endl;
+
     return 0;
 }
