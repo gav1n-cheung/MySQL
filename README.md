@@ -218,7 +218,7 @@ firewall-cmd --list-ports
 ```
 ### server端
 放在你的云服务器上
-```
+```c++
 #include<stdio.h>
 #include <unistd.h>
 #include<sys/types.h>
@@ -313,7 +313,7 @@ int main()
 }
 ```
 ### client端
-```
+```c++
 #include<stdio.h>
 #include <unistd.h>
 #include<sys/types.h>
@@ -382,3 +382,581 @@ int main()
         return 0;
 }
 ```
+
+# 更多的优化
+
+## 1、如何建表？
+
+#### 比较笨的方法
+
+我们首先要知道，MySQL关系数据库是关系数据库，他没有办法存储数组这样的类型。一开始的设想是，socket不会将一个数组完整地传输过去，所以我们提前在数据库中就将数据正义一下，成为一个比较好解析的格式，可以看做一个很简单的序列化。
+
+我们将原来的点云数据格式:
+
+```
+(x1,y1,z1),
+(x2,y2,z2),
+...
+(xn,yn,zn)
+```
+
+变为
+
+```
+(x1,x2,...,xn),(y1,y2,...,yn),(z1,z2,...,zn)
+```
+
+这样就可以作为三个特别长的字符串存储到数据库中了，这样的问题十分大，因为这些字符串太大了，所以不能用常用的存储格式，而MySQL针对这种特别大的数据，有两种类型的格式，==BOLB==和==TEXT==。其中BLOB用于存储二进制的大数据，而TEXT用于常用字符的大数据，但是TEXT在索引等等数据库常用操作中的效率极低，因此很少采用，但是现在情况就是这样，就强行上了。用pcl得到每个点的坐标然后做上面那种的字符串拼接，然后最后形成的数据只有一行（当然也可以是多行）。
+
+## 2、如何读取数据库
+
+找了一个现成的轮子，在这里
+
+```c++
+#include <mysql/mysql.h>
+#include <iostream>
+#include <string.h>
+#include <vector>
+struct ConnectionInfo
+{
+    /* data */
+    const char* host;
+    const char* user;
+    const char* password;
+    const char* database;
+    const char* unix_socket;
+    long client_flag;
+    int port;
+
+    ConnectionInfo():
+    host("127.0.01"),port(3306),unix_socket(nullptr),client_flag(0){};
+};
+
+class MySQLManager{
+    public:
+        bool Init(ConnectionInfo& info);
+        bool FreeConnect();
+        bool ExecuteSql(std::string sql);
+        MYSQL_RES* QueryData(std::string sql);
+        std::vector<std::string> PrintQueryRes();
+    private:
+        MYSQL m_mysql;
+        MYSQL_RES* m_res;
+};
+
+```
+
+```c++
+#include "MySQLManager.h"
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <typeinfo>
+using namespace std;
+bool MySQLManager::Init(ConnectionInfo& info){
+    mysql_init(&m_mysql);
+    if(!mysql_real_connect(&m_mysql,info.host,info.user,info.password,info.database,info.port,info.unix_socket,info.client_flag)){
+        return false;
+    }
+    return true;
+}
+
+bool MySQLManager::FreeConnect(){
+    mysql_free_result(m_res);
+    mysql_close(&m_mysql);
+    return false;
+}
+
+bool MySQLManager::ExecuteSql(std::string sql){
+    if(mysql_query(&m_mysql,sql.c_str())){
+        std::cerr<<"MySQL execute failed! Error info :"<<mysql_error(&m_mysql)<<std::endl;
+        return false;
+    }
+    std::cout<<"MySQL execute success!"<<std::endl;
+    return true;
+}
+
+MYSQL_RES* MySQLManager::QueryData(std::string sql){
+    if(mysql_query(&m_mysql,sql.c_str())){
+        cout<<"error"<<endl;
+        return nullptr;
+    }
+    std::cout<<"MySQL query success!"<<std::endl;
+    m_res = mysql_store_result(&m_mysql);
+    return m_res;
+}
+
+std::vector<string> MySQLManager::PrintQueryRes(){
+    std::vector<string> res;
+    if(!m_res){
+        std::cout<<"There are no results!"<<std::endl;
+        return res;
+    }
+
+    MYSQL_FIELD* field = nullptr;
+    char field_name[64][32];
+    for(int i=0;field = mysql_fetch_field(m_res);i++){
+        strcpy(field_name[i],field->name);       
+    }
+    int columns = mysql_num_fields(m_res);
+    MYSQL_ROW row;
+    while(row=mysql_fetch_row(m_res)){
+        for(int i=0;i<columns;i++) {
+            res.push_back(row[i]);
+        }
+    }
+    return res;
+}
+```
+
+可以自己重写
+
+## 3、如何传输数据？
+
+现有的轮子
+
+```c++
+#include <sys/socket.h>
+#include <iostream>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
+
+using namespace std;
+class TcpSocket{
+    public:
+        TcpSocket();
+        TcpSocket(int socket);
+        ~TcpSocket();
+        int connectToHost(string ip,unsigned short port);
+        int sendMsg(string msg);
+        string recvMsg();
+    private:
+        int readn(char* buf,int size);
+        int writen(const char* msg,int size);
+    private:
+        int m_fd;
+};
+
+```
+
+```c++
+#include "translate.h"
+
+TcpSocket::TcpSocket(){
+    m_fd = socket(AF_INET,SOCK_STREAM,0);
+}
+
+TcpSocket::TcpSocket(int socket){
+    m_fd = socket;
+}
+
+TcpSocket::~TcpSocket(){
+    if(m_fd>0) close(m_fd);
+}
+
+int TcpSocket::connectToHost(string ip,unsigned short port){
+    struct sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(port);
+    inet_pton(AF_INET,ip.data(),&saddr.sin_addr.s_addr);
+    int ret = connect(m_fd,(struct sockaddr*)&saddr,sizeof(saddr));
+    if(ret==-1){
+        perror("connect failed!");
+        return -1;
+    }
+    cout<<"connect success!"<<endl;
+    return ret;
+}
+
+int TcpSocket::sendMsg(string msg){
+    char* data = new char[msg.size()+4];
+    int bigLen = htonl(msg.size());
+    memcpy(data,&bigLen,4);
+    memcpy(data+4,msg.data(),msg.size());
+    int ret = writen(data,msg.size()+4);
+    delete[]data;
+    return ret;
+}
+
+string TcpSocket::recvMsg(){
+    //接收数据
+    //1、读数据头
+    int len = 0;
+    readn((char*)&len,4);
+    len = ntohl(len);
+    cout<<"size of data cube: "<<len<<endl;
+    //根据读出的长度分配内存
+    char* buf = new char[len+1];
+    int ret = readn(buf,len);
+    if(ret!=len) return string();
+    buf[len] = '\0';
+    string retStr(buf);
+    delete[] buf;
+    return retStr;
+}
+
+int TcpSocket::readn(char* buf, int size)
+{
+    int nread = 0;
+    int left = size;
+    char* p = buf;
+
+    while (left > 0)
+    {
+        if ((nread = read(m_fd, p, left)) > 0)
+        {
+            p += nread;
+            left -= nread;
+        }
+        else if (nread == -1)
+        {
+            return -1;
+        }
+    }
+    return size;
+}
+
+int TcpSocket::writen(const char* msg, int size)
+{
+    int left = size;
+    int nwrite = 0;
+    const char* p = msg;
+
+    while (left > 0)
+    {
+        if ((nwrite = write(m_fd, msg, left)) > 0)
+        {
+            p += nwrite;
+            left -= nwrite;
+        }
+        else if (nwrite == -1)
+        {
+            return -1;
+        }
+    }
+    return size;
+}
+
+```
+
+```c++
+#include "translate.h"
+
+class TcpServer{
+    public:
+        TcpServer();
+        ~TcpServer();
+        int setListen(unsigned short port);
+        TcpSocket* acceptConn(struct sockaddr_in* addr = nullptr);
+    private:
+        int m_fd;
+};
+```
+
+```c++
+#include "Server.h"
+
+TcpServer::TcpServer(){
+    m_fd = socket(AF_INET,SOCK_STREAM,0);
+}
+
+TcpServer::~TcpServer(){
+    close(m_fd);
+}
+
+int TcpServer::setListen(unsigned short port){
+    struct sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_port = htons(port);
+    inet_aton("10.0.16.8",&saddr.sin_addr);
+    int ret = bind(m_fd,(struct sockaddr*)&saddr,sizeof(saddr));
+    if(ret==-1){
+        perror("bind failed");
+        return -1;
+    }
+    cout<<"socket bind success\n\tIP:"
+        <<inet_ntoa(saddr.sin_addr)
+        <<"\n\tPort:"<<port<<endl;
+    ret = listen(m_fd,128);
+    if(ret == -1){
+        perror("listen failed");
+        return -1;
+    }
+    cout<<"listen success..."<<endl;
+    return ret;
+}
+
+TcpSocket* TcpServer::acceptConn(sockaddr_in *addr){
+    if(addr == NULL) return nullptr;
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    int cfd = accept(m_fd,(struct sockaddr*)addr,&addrlen);
+    if(cfd == -1){
+        perror("accept");
+        return nullptr;
+    }
+    cout<<"connet success..."<<endl;
+    return new TcpSocket(cfd);
+}
+```
+
+## 4、主函数
+
+```c++
+#include <iostream>
+#include "MySQLManager.h"
+#include "Server.h"
+#include "test.pb.h"
+using namespace std;
+
+MySQLManager mysql;
+int socket_server;
+sockaddr_in clnt_addr;
+//数据库信息
+struct MysqlInformation{
+    const char* host;
+    const char* user;
+    const char* pwd;
+    const char* db_name;
+    int port;
+};
+
+//socket信息
+struct SocketInformation
+{
+    TcpServer* s;
+    TcpSocket* tcp;
+    sockaddr_in addr;
+};
+
+int BuildMySQL(){
+    ConnectionInfo info;
+    info.host = "localhost";
+    info.user = "cheung";
+    info.password = "128veg8A@";
+    info.database = "COAL_DATA";
+    info.port = 3306;
+    if(!mysql.Init(info)) {
+        cout<<"MySQL  Init failed!"<<endl;
+        return -1;
+    }
+    else {
+        cout<<"\tMySQL  Init Success!"<<endl;
+        return 0;
+    }
+}
+
+string GetPointCloudData(){
+    string x,y,z;
+    string sql_x = "select x from table2";
+    string sql_y = "select y from table2";
+    string sql_z = "select z from table2";
+    vector<string> tmp;
+    mysql.QueryData(sql_x);
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        x+=item;
+        // cout<<item.size()<<endl;
+    }
+    cout<<"x size:"<<x.size()<<endl;
+
+    mysql.QueryData(sql_y);
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        y+=item;
+        // cout<<item.size()<<endl;
+    }
+    cout<<"y size:"<<y.size()<<endl;
+
+    mysql.QueryData(sql_z);
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        z+=item;
+        // cout<<item.size()<<endl;
+    }
+    cout<<"z size:"<<z.size()<<endl;
+    PointCloud pointcloud;
+    pointcloud.set_x(x);
+    pointcloud.set_y(y);
+    pointcloud.set_z(z);
+    string str;
+    pointcloud.AppendToString(&str);
+    return str;
+}
+
+int BuildSocket(){
+    socket_server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof(serv_addr));  //每个字节都用0填充
+        serv_addr.sin_family= AF_INET;
+        serv_addr.sin_port = htons(8001);   //端口号 该端口号需要网络与安全->安全组中先创建好
+        inet_aton("10.0.16.8",&serv_addr.sin_addr); 
+    if(bind(socket_server, (struct sockaddr*)&serv_addr, sizeof(serv_addr))) {
+        cout<<"bind failed"<<endl;
+        return -1;
+    }
+}
+
+void ListenClient(){
+    socklen_t clnt_addr_size = sizeof(clnt_addr);
+    int clnt_sock = accept(socket_server, (struct sockaddr*)&clnt_addr, &clnt_addr_size);
+    if(clnt_sock==-1) cout<<"Client connect Failed!"<<endl;
+    else{
+        cout<<"Client connect success!\n"
+            <<"Client IP : "<<inet_ntoa(clnt_addr.sin_addr)<<"\t"
+            <<"Client Port : "<<clnt_addr.sin_port<<endl;
+        string send_str = GetPointCloudData();
+        // string send_str = "hello";
+        const char*  data_ptr = send_str.data();
+        size_t data_size = send_str.size();
+        int bytes_sent;
+        // cout<<send_str.size()<<endl;
+        // char str[send_str.size()+1];
+        // strcpy(str,send_str.c_str());
+        // int length_sum=0;
+        while(data_size>0){
+            bytes_sent = write(clnt_sock,data_ptr,data_size);
+            cout<<bytes_sent<<endl;
+            if(bytes_sent<0) return;
+            data_ptr += bytes_sent;
+            data_size -= bytes_sent;
+        }
+    }
+    close(clnt_sock);
+}
+
+int main(){
+    cout<<"======================================================"<<endl;
+    cout<<"             "<<"Liu Gong Server Software"<<"         "<<endl;
+    cout<<"======================================================"<<endl;
+    cout<<"step 1: Start socket Init ...."<<endl;
+    if(BuildSocket()==-1) return 0;
+    cout<<"\tSocket Init Success!"<<endl;
+    cout<<"step 2: Start MySQL  Init ...."<<endl;
+    if(BuildMySQL()==-1) return 0;
+    // GetPointCloudData();
+    listen(socket_server,20);
+    cout<<"Server software build Success!"<<endl;
+    while(1){
+        cout<<"\n"<<"Start Accpet Client Connect..."<<endl;
+        ListenClient();
+    }
+    
+    close(socket_server);
+    return 0;
+}
+```
+
+# 更更多的优化
+
+## 1、如何建表
+
+想一哈，为什么不直接一个点一个点的存呢？因为我们不想一个点一个点的传数据，因为socket没法把原有的数据变成数组来传输，所以只要我们能够将数据库读到的数据以数组形式传递，那就可以了。那有没有办法实现上面这个需求呢？OK，Google Protobuf。还是说回来建表，我们现在的表的形式和点云原本保存的形式一致了，就是这样：
+
+```sql
+x      y      z
+...   ...    ...
+...   ...    ...
+...   ...    ...
+```
+
+字段格式变为float，因为pcl的点格式就是这样
+
+## 2、读取数据库
+
+只要修改一点点就可以了，将读取数据库返回的格式变为float的vector
+
+```c++
+std::vector<float> PrintQueryRes();
+```
+
+```c++
+std::vector<float> MySQLManager::PrintQueryRes(){
+    std::vector<float> res;
+    if(!m_res){
+        std::cout<<"There are no results!"<<std::endl;
+        return res;
+    }
+
+    MYSQL_FIELD* field = nullptr;
+    char field_name[64][32];
+    for(int i=0;field = mysql_fetch_field(m_res);i++){
+        strcpy(field_name[i],field->name);       
+    }
+    int columns = mysql_num_fields(m_res);
+    MYSQL_ROW row;
+    while(row=mysql_fetch_row(m_res)){
+        for(int i=0;i<columns;i++) {
+            res.push_back(stof(row[i]));
+        }
+    }
+    mysql_free_result(m_res);
+    return res;
+}
+```
+
+## 3、如何传输数据
+
+.proto文件如下
+
+```
+syntax = "proto3";
+
+message Vectex{
+     float x = 1;
+     float y = 2;
+     float z = 3;
+}
+
+message PointCloud{
+     repeated Vectex vectex =1;
+}
+```
+
+## 4、主函数
+
+作以下修改
+
+```c++
+string GetPointCloudData(){
+    string x,y,z;
+    string sql_x = "select x from table3";
+    string sql_y = "select y from table3";
+    string sql_z = "select z from table3";
+    vector<float> tmp_x;
+    vector<float> tmp_y;
+    vector<float> tmp_z;
+    mysql.QueryData(sql_x);
+    tmp_x = mysql.PrintQueryRes();
+    MYSQL_RES* res_y = mysql.QueryData(sql_y);
+    tmp_y = mysql.PrintQueryRes();
+    MYSQL_RES* res_z =mysql.QueryData(sql_z);
+    tmp_z = mysql.PrintQueryRes();
+    int size = tmp_x.size();
+    // cout<<res_z<<endl;
+    cout<<tmp_x.size()<<"  "<<tmp_y.size()<<" "<<tmp_z.size()<<endl;
+    PointCloud pointcloud;
+    Vectex* vector;
+    int i;
+    for(i=0;i<size;i++){
+        vector = pointcloud.add_vectex();
+        // cout<<tmp_x[i]<<" "<<tmp_y[i]<<" "<<tmp_z[i]<<endl;
+        vector->set_x(tmp_x[i]);
+        vector->set_y(tmp_y[i]);
+        vector->set_z(tmp_z[i]);
+        // cout<<i<<endl;
+    }
+    cout<<"vertex size = "<<pointcloud.vectex_size()<<endl;
+    string str;
+    pointcloud.AppendToString(&str);
+    return str;
+}
+```
+
+
+
+
+
+
+
