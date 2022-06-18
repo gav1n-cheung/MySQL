@@ -23,7 +23,8 @@ class MySQLManager{
         bool FreeConnect();
         bool ExecuteSql(std::string sql);
         MYSQL_RES* QueryData(std::string sql);
-        std::vector<float> PrintQueryRes();
+        // std::vector<float> PrintQueryRes();
+        std::vector<std::string> PrintQueryRes();
     private:
         MYSQL m_mysql;
         MYSQL_RES* m_res;

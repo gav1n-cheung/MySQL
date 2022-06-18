@@ -40,8 +40,8 @@ MYSQL_RES* MySQLManager::QueryData(std::string sql){
     return m_res;
 }
 
-std::vector<float> MySQLManager::PrintQueryRes(){
-    std::vector<float> res;
+std::vector<string> MySQLManager::PrintQueryRes(){
+    std::vector<string> res;
     if(!m_res){
         std::cout<<"There are no results!"<<std::endl;
         return res;
@@ -56,9 +56,36 @@ std::vector<float> MySQLManager::PrintQueryRes(){
     MYSQL_ROW row;
     while(row=mysql_fetch_row(m_res)){
         for(int i=0;i<columns;i++) {
-            res.push_back(stof(row[i]));
+            // std::cout<<"\t"<<row[i];
+            res.push_back(row[i]);
         }
     }
-    mysql_free_result(m_res);
     return res;
 }
+
+// std::vector<float> MySQLManager::PrintQueryRes(){
+//     std::vector<float> res;
+//     if(!m_res){
+//         std::cout<<"There are no results!"<<std::endl;
+//         return res;
+//     }
+
+//     MYSQL_FIELD* field = nullptr;
+//     char field_name[64][32];
+//     for(int i=0;field = mysql_fetch_field(m_res);i++){
+//         strcpy(field_name[i],field->name);       
+//     }
+//     int columns = mysql_num_fields(m_res);
+//     // for(int i=0;i<columns;i++) std::cout<<"\t"<<field_name[i];
+//     // std::cout<<"\n"<<std::endl;
+//     MYSQL_ROW row;
+//     while(row=mysql_fetch_row(m_res)){
+//         for(int i=0;i<columns;i++) {
+//             // std::cout<<"\t"<<row[i];
+//             res.push_back(stof(row[i]));
+//         }
+//         // std::cout<<"\n"<<std::endl;
+//     }
+//     mysql_free_result(m_res);
+//     return res;
+// }

@@ -1,0 +1,51 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_5ee54/fast 
+/usr/bin/gmake -f CMakeFiles/cmTC_5ee54.dir/build.make CMakeFiles/cmTC_5ee54.dir/build
+gmake[1]: Entering directory `/root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_5ee54.dir/CheckSymbolExists.c.o
+/usr/bin/cc    -o CMakeFiles/cmTC_5ee54.dir/CheckSymbolExists.c.o   -c /root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_5ee54
+/usr/local/cmake/bin/cmake -E cmake_link_script CMakeFiles/cmTC_5ee54.dir/link.txt --verbose=1
+/usr/bin/cc      -rdynamic CMakeFiles/cmTC_5ee54.dir/CheckSymbolExists.c.o  -o cmTC_5ee54 
+CMakeFiles/cmTC_5ee54.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x16): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [cmTC_5ee54] Error 1
+gmake[1]: Leaving directory `/root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp'
+gmake: *** [cmTC_5ee54/fast] Error 2
+
+File /root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/usr/bin/gmake cmTC_669ad/fast 
+/usr/bin/gmake -f CMakeFiles/cmTC_669ad.dir/build.make CMakeFiles/cmTC_669ad.dir/build
+gmake[1]: Entering directory `/root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp'
+Building C object CMakeFiles/cmTC_669ad.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_669ad.dir/CheckFunctionExists.c.o   -c /usr/local/cmake/share/cmake-3.14/Modules/CheckFunctionExists.c
+Linking C executable cmTC_669ad
+/usr/local/cmake/bin/cmake -E cmake_link_script CMakeFiles/cmTC_669ad.dir/link.txt --verbose=1
+/usr/bin/cc  -DCHECK_FUNCTION_EXISTS=pthread_create    -rdynamic CMakeFiles/cmTC_669ad.dir/CheckFunctionExists.c.o  -o cmTC_669ad -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [cmTC_669ad] Error 1
+gmake[1]: Leaving directory `/root/program/Server/UnityServerStr/build/CMakeFiles/CMakeTmp'
+gmake: *** [cmTC_669ad/fast] Error 2
+
+

@@ -1,7 +1,7 @@
 #include <iostream>
 #include "MySQLManager.h"
-#include "pointcloud.pb.h"
 #include "Server.h"
+#include "test.pb.h"
 using namespace std;
 
 MySQLManager mysql;
@@ -43,33 +43,40 @@ int BuildMySQL(){
 
 string GetPointCloudData(){
     string x,y,z;
-    string sql_x = "select x from table3";
-    string sql_y = "select y from table3";
-    string sql_z = "select z from table3";
-    vector<float> tmp_x;
-    vector<float> tmp_y;
-    vector<float> tmp_z;
+    string sql_x = "select x from table2";
+    string sql_y = "select y from table2";
+    string sql_z = "select z from table2";
+    vector<string> tmp;
     mysql.QueryData(sql_x);
-    tmp_x = mysql.PrintQueryRes();
-    MYSQL_RES* res_y = mysql.QueryData(sql_y);
-    tmp_y = mysql.PrintQueryRes();
-    MYSQL_RES* res_z =mysql.QueryData(sql_z);
-    tmp_z = mysql.PrintQueryRes();
-    int size = tmp_x.size();
-    // cout<<res_z<<endl;
-    cout<<tmp_x.size()<<"  "<<tmp_y.size()<<" "<<tmp_z.size()<<endl;
-    PointCloud pointcloud;
-    Vectex* vector;
-    int i;
-    for(i=0;i<size;i++){
-        vector = pointcloud.add_vectex();
-        // cout<<tmp_x[i]<<" "<<tmp_y[i]<<" "<<tmp_z[i]<<endl;
-        vector->set_x(tmp_x[i]);
-        vector->set_y(tmp_y[i]);
-        vector->set_z(tmp_z[i]);
-        // cout<<i<<endl;
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        x+=item;
+        // cout<<item.size()<<endl;
     }
-    cout<<"vertex size = "<<pointcloud.vectex_size()<<endl;
+    cout<<"x size:"<<x.size()<<endl;
+    // cout<<"x size:"<<tmp.size()<<endl;
+    
+    mysql.QueryData(sql_y);
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        y+=item;
+        // cout<<item.size()<<endl;
+    }
+    cout<<"y size:"<<y.size()<<endl;
+    // cout<<"y size:"<<tmp.size()<<endl;
+
+    mysql.QueryData(sql_z);
+    tmp = mysql.PrintQueryRes();
+    for(auto item:tmp) {
+        z+=item;
+        // cout<<item.size()<<endl;
+    }
+    cout<<"z size:"<<z.size()<<endl;
+    // cout<<"z size:"<<tmp.size()<<endl;
+    PointCloud pointcloud;
+    pointcloud.set_x(x);
+    pointcloud.set_y(y);
+    pointcloud.set_z(z);
     string str;
     pointcloud.AppendToString(&str);
     return str;

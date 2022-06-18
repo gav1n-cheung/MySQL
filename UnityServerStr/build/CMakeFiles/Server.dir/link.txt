@@ -1,0 +1,1 @@
+/usr/bin/c++  -pthread  -rdynamic CMakeFiles/Server.dir/main.cpp.o CMakeFiles/Server.dir/MySQLManager.cpp.o CMakeFiles/Server.dir/Server.cpp.o CMakeFiles/Server.dir/translate.cpp.o CMakeFiles/Server.dir/test.pb.cc.o CMakeFiles/Server.dir/pointcloud.pb.cc.o  -o Server -Wl,-rpath,/usr/local/lib -lmysqlclient /usr/local/lib/libprotobuf.so -lpthread 
