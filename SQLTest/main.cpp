@@ -18,10 +18,10 @@ int main() {
     double t1 = omp_get_wtime();
     MYSQL mysql;
     mysql_init(&mysql);
-    const string host = "43.138.55.15";
-    const string user = "cheung";
-    const string password = "128veg8A@";
-    const string db = "COAL_DATA";
+    const string host = "xx.xx.xx.xx";
+    const string user = "sqlusername";
+    const string password = "sqluserpassword";
+    const string db = "sqldbname";
     if (!mysql_real_connect(&mysql, host.c_str(), user.c_str(), password.c_str(), db.c_str(), 3306, 0, 0))
         cout << "connect mysql failed!" << mysql_error(&mysql) << endl;
     else
