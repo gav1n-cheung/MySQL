@@ -1,131 +1,158 @@
-# 牛客网Linux高并发服务器开发
-## Linux系统编程入门
-### GCC
-```
-gcc ***.c -o name //生成name名称的可执行文件
--E 预编译生成.i文件
--S 编译生成.s汇编文件
--C 汇编生成.o机器码文件
--o 生成可执行文件
-```
-### 制作和使用静态库
-```
-gcc -c **.c //生成.o文件
-ar rcs libxx.a **.o //将.o文件生成名为libxx.a的静态库文件，该静态库文件的名称为xx
-# 如果找不到头文件，使用-I 指定头文件目录
-gcc main.c -o app -I ./include -l calc -L ./lib 
-# 使用-l指定静态库名称，使用-L指定静态库所在目录
-```
-### 制作和使用动态库
-```
-gcc -c -fpic *.c
-gcc -shared *.o -o libcalc.so -I ./include
-gcc main.cpp -o app -I ./include -l calc -L ./lib
-#可以在终端内临时设置环境变量
-export LD_LIBRARY_PATH = $LD_LIBRARY_PATH:your_path
-#或者在~/.bashrc 或者~/.zshrc中添加该行
-export LD_LIBRARY_PATH = $LD_LIBRARY_PATH:your_path
-source ~/.bashrc
-```
-### 静态库和动态库的区别
-![静态库和动态库的优缺点]()
-### makefile
-![如何读和写makefile]()
-### GDB调试
-```
-# 在gcc中加入参数-g以进行GDB调试,加入-Wall参数尽量打开warning
-gcc test.c -o test -g -Wall
-# gdb中设定参数
->(gdb) set args 10 20
-# 显示设定的参数
->(gdb) show args
-# l/list (filename:)11 可以根据行号和方法名来查看指定的文件
+# 牛客网高并发服务器
 
-# 在指定的行号处设断点
->(gdb) break (filename:)9
-# 显示已有的断点
->(gdb) info b 
-# 在指定的方法名处设置断点
->(gdb) break (filename:)main
-# 使用delete 断点编号 来删除指定的断点
->(gdb) delete 1
-# 使用disable/enable使断点失效/生效
->(gdb) disable 1
-# 使用break 行号 if var = ? 来设定条件断点
->(gdb) break 16 if i=3
+## Linux下C++开发基础
 
-◼ 运行GDB程序  
-start（程序停在第一行）  
-run（遇到断点才停）  
-◼ 继续运行，到下一个断点停  
-c/continue  
-◼ 向下执行一行代码（不会进入函数体）  
-n/next  
-◼ 变量操作  
-p/print 变量名（打印变量值）  
-ptype 变量名（打印变量类型）  
-◼ 向下单步调试（遇到函数进入函数体）  
-s/step  
-finish（跳出函数体）  
-◼ 自动变量操作  
-display 变量名（自动打印指定变量的值）  
-i/info display  
-undisplay 编号  
-◼ 其它操作  
-set var 变量名=变量值 （循环中用的较多）  
-until （跳出循环）  
+### GCC 
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession01_LinuxBasic/lession02_gcc/gcc.md)  
+> C++生成可执行文件,分别需要经过--预编译，编译，汇编，链接四个过程，与之对应的GCC流程为：
+> > 预编译 -E 使用gcc -E xx.c 可以生成预编译文件 xx.i  
+> > 编译  -S  使用gcc -S xx.i 可以将.i文件编译为汇编文件.s文件  
+> > 汇编  -c  使用gcc -c xx.s 可以将.s文件编译为可执行的二进制文件.o  
+> > 链接  -o  使用gcc -o xx.o 可以将.o文件编译为最终的可执行文件(无后缀，.c文件可以直接-o生成最后的文件)
+
+``` bash
+❯ vim test.c
+❯ gcc test.c -E -o test.i
+❯ ls
+gcc.md  test.c  test.i
+❯ gcc test.i -S -o test.s
+❯ ls
+gcc.md  test.c  test.i  test.s
+❯ gcc test.s -c -o test.o
+❯ ls
+gcc.md  test.c  test.i  test.o  test.s
+❯ gcc test.o -o test
+❯ ls
+gcc.md  test  test.c  test.i  test.o  test.s
+❯ ./test
+hello world!
 ```
-### 文件IO
+### 静态库的制作
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession01_LinuxBasic/lession03_static_lib/static_lib.md)  
+> 静态库的命名规则如下:  
+> linux:libxxx.a
+> > lib:库前缀(固定)  
+> > xxx:库名称(自定义)  
+> > .a :库后缀(固定)
+> 
+> windows:libxxx.lib
+```bash
+静态库的制作：
+ar rcs libxxx.a xxx.o xxx.o
+    -r:将文件插入备存文件中
+    -c:建立备存文件
+    -s:索引文件
+❯ gcc test.c -o test.o
+❯ ls
+gcc.md  test.c  test.o
+❯ ar rcs libtest.a test.o
+❯ ls
+gcc.md  libtest.a  test.c  test.o
 ```
-标准C库和Linux系统IO的关系：调用和被调用的关系
+### 静态库的使用
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession01_LinuxBasic/lession04_use_static_lib/use_static_lib.md)
 ```
-### 虚拟地址空间
+❯ tree
+.
+├── add.c
+├── div.c
+├── mult.c
+└── sub.c
+
+❯ tree
+.
+├── add.c
+├── add.o
+├── div.c
+├── div.o
+├── mult.c
+├── mult.o
+├── sub.c
+└── sub.o
+
+❯ ar rcs libtest.a add.o div.o mult.o sub.o
+
+❯ tree
+.
+├── add.c
+├── add.o
+├── div.c
+├── div.o
+├── libtest.a
+├── mult.c
+├── mult.o
+├── sub.c
+└── sub.o
+
+❯ rm *.o
+❯ tree
+.
+├── add.c
+├── div.c
+├── libtest.a
+├── mult.c
+└── sub.c
+
+❯ gcc main.c -o app -L ./lib -l test -I ./include
+    -o 生成文件
+    -L 指明静态库文件路径
+    -l 智能静态库文件名称(libxxx.a中的xxx)
+    -I 指明头文件路径
+❯ tree
+.
+├── app
+├── include
+│   └── head.h
+├── lib
+│   └── libtest.a
+├── main.c
+└── src
+    ├── add.c
+    ├── div.c
+    ├── mult.c
+    └── sub.c
 ```
-每个进程都有自己的PCB,通过CPU来与物理内存映射
+### 制作动态库
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession01_LinuxBasic/lession05_nonstatic_lib/nonstatic.md)
+> 动态库的命名规则  
+> libxxx.so  
+> > lib:前缀(固定)  
+> > xxx:库名称  
+> > so: 库后缀(固定)  
+> 
+> windows:libxxx.dll  
+```bash
+#生成无关位置的.o文件
+gcc -c fpic/-fPIC a.c b.c
+#生成动态库
+gcc -shared a.o b.o -o libtest.so
 ```
-### 文件描述符
-```
-文件描述符是一个数组，大小默认为1024，前三个位置被默认占用了(0=标准输入,1=标准输出,2=标准错误,表征当前终端的信息)，新打开的文件会选择没被占用的最小的位置来保存文件标识符。被占用的文件描述符在释放后才可以被重新使用。
-```
-### Linux系统IO函数
-```
-open 打开一个文件并分配文件标识符，通过O_CREAT可以创建新文件并设定其权限(需要与掩码做按位与操作)
-read
-write 通过buf来进行写操作，参数包括(文件标识符，buf，size)
-lseek 对文件指针进行偏移操作，可以获取文件长度，扩展文件长度等(需要写入才能生效)
-stat/lstat 获取文件属性
-```
-### 自己写一个ls l命令
-[这里]()查看代码
-### 控制文件属性
-```
-access 与输入的宏对比得到是否有该权限
-chmod 修改文件的权限(八进制修改)
-chown 修改文件所有者
-truncate 修改文件的长度至指定的尺寸
-```
-### 控制目录属性
-```
-chdir 修改进程的工作目录
-getcwd 获取当前的工作目录
-mkdir 创建一个文件夹并指定权限(与掩码进行按位与)
-rename 修改oldpath至oldpath名称
-```
-### 遍历整个目录
-```
-opendir 打开目录
-readdir 读取目录内容,返回一个struct,内有读到的文件信息，可以通过宏来找到特定类型的文件和目录
-close 关闭目录
-```
-[这里]()查看代码
-### dup和dup2控制文件描述符
-```
-dup 复制一个文件描述符到一个新的文件描述符，当然会占用一个新的文件描述符，我们也可以通过新的文件描述符来修改复制的文件描述符指向的文件，并且close一次即可关闭所有指向该文件的文件描述符(实验通过,再通过旧的文件描述符进行write操作是不合法的--write: Bad file descriptor)
-```
-```
-dup2 重定向文件描述符,被重定向的文件描述符原来指向的文件将被自动关闭,返回一个这个被重定向的文件描述符,这是与上面的复制情况不同,这两个文件描述符是独立的,如果关闭其中一个不会影响另外一个文件描述符对文件的操作(实验通过,关闭其中一个文件描述符,但是另外一个文件描述符进行write操作是合法的)
-```
-### fcntl
-```
-fcntl可以实现复制文件描述符、或者指定的文件描述符文件状态flag、可以设置部分可选项的文件描述符文件状态flag(如O_APPEND,O_NONBLOCK)
+### 使用动态库
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession01_LinuxBasic/lession05_nonstatic_lib/nonstatic.md)
+```bash
+#仍然报错，因为动态库的路径没有设置
+❯ gcc main.c -o app -l test -L ./lib -I ./include 
+#使用ldd命令查看执行文件的链接库信息
+❯ ldd app 
+    linux-vdso.so.1 (0x00007ffe80395000)
+    libcalc.so => not found
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fcad191e000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007fcad1afd000)
+#使用echo命令查看动态库的链接信息
+❯ echo &LD_LIBRATY_PATH
+#使用export临时指定动态链接库路径
+❯ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/cheung/program/server/server_lession/lession05_nonstatic_lib/library/lib/
+# 再次查看ldd app既可得到结果
+❯ ldd app
+    linux-vdso.so.1 (0x00007ffcaf3f1000)
+    libcalc.so => /home/cheung/program/server/server_lessionlession05_nonstatic_lib/library/lib/libcalc.so (0x00007f3618d1c000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f3618b44000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f3618d28000)
+#在shell配置文件中加入该环境变量，用户级别的路径设置
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/cheung/program/server/server_lession/lession05_nonstatic_lib/library/lib/
+#修改系统文件，实现系统级别的动态库路径设置
+sudo vim /etc/profile   
+#在文件末尾添加 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/cheung/program/server/server_lession/lession05_nonstatic_lib/library/lib/
+#即可
 ```
