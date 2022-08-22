@@ -1,0 +1,8 @@
+# 定义变量
+src=add.o div.o mult.o div.o main.o sub.o
+target=app
+$(target):$(src)
+	$(CC) $^ -o $@
+
+%.o:%.c
+	$(CC) -c $< -o $@
