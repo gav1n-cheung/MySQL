@@ -441,11 +441,11 @@ void exit(int status);
 #include <unistd.h>
 void _exit(int status);
 ```
-#### 孤儿进程
+#### 孤儿进程(父进程结束，子进程不结束)
 * 父进程运行结束后，子进程仍在运行，则该子进程称为孤儿进程
 * 每当出现一个孤儿进程，内核就把孤儿进程的父进程设为init(pid=1)，而init进程会使用wait()它的已经退出的子进程。
 * 因此孤儿进程不会产生危害
-#### 僵尸进程
+#### 僵尸进程(父进程不结束，子进程结束)
 * 每个进程结束之后，都会释放地址空间中的用户区数据，但是其内核区的数据无法自己释放，需要父进程释放
 * 进程终止后，如果父进程没有去回收其内核区的数据，则子进程残留资源存放于内核中，此时的子进程称为僵尸进程
 * 僵尸进程不能被kill -9 杀死，则如果父进程不结束，或者通过wait()或者waitpid()对子进程资源进行回收的话，那么保留的信息不会被释放，导致子进程一直占用进程号。会导致僵尸进程一直占据进程号，直至没有可用的进程号以供新进程的创建，僵尸进程对系统危害较大
@@ -660,6 +660,348 @@ int main(){
         memset(buf,0,sizeof(buf));
     }
     close(fd);
+    return 0;
+}
+```
+#### 内存映射
+[笔记](https://github.com/gav1n-cheung/MySQL/tree/main/ServerBasic/lession02_ProcessBasic/lession12_memory_mapped)
+效率较高  
+内存映射将磁盘文件的数据映射到内存中，用户通过修改内存就能修改磁盘数据
+##### 系统调用
+```C++
+#include <sys/types>
+void* mmap(void* addr,size_t length,int prot,int flags,int fd,off_t offset);
+int munmap(void* addr,size_t length);
+```
+#### 信号
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession02_ProcessBasic/lession14_setitimer/setitimer.c)  
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession02_ProcessBasic/lession14_setitimer/signal.c)
+
+## 多线程开发
+### 线程概述
+* 与进程(process)类似，线程(thread)是允许应用程并发执行多个任务得一种机制。一个进程可以包含多个线程。同一个程序中的所有线程均会独立执行相同程序，且共享同一份全局内存区域，其中包括初始化数据段(data),未初始化数据段(bss),堆内存段.
+* 进程是CPU分配资源的最小单位，线程是操作系统调度执行的最小单位。
+* 线程是轻量级的进程
+### 线程与进程的区别
+* 进程间的信息难以共享。由于除去只读代码段外，父子进程并未共享内存，因此必须采用一些进程间通信方式，在进程间进行信息交换
+* 调用fork()来创建进程的代价相对较高，即使利用写时复制技术，仍然需要复制诸如内存页表和文件描述符表之类的多种进程属性，这意味着fork()调用在时间上的开销仍然不菲
+* 线程之间能够方便、快速地共享信息。只需将数据复制到共享(全局或堆)变量中即可
+* 创建线程通常比创建进程要快10倍甚至更多。线程间是共享虚拟地址空间的，无需采用写诗复制来复制内存，也无需复制页表
+### 线程间的资源共享
+共享资源
+* 进程ID与父进程ID
+* 进程ID与会话ID
+* 用户ID与用户组ID
+* 文件描述符表
+* 信号处置
+* 文件系统的相关信息：文件权限掩码(umask)、当前工作目录
+* 虚拟地址空间(除栈空间、.text)  
+非共享资源
+* 线程ID
+* 信号掩码
+* 线程特有数据
+* error变量
+* 实时调度策略和优先级
+* 栈、本地变量和函数的调用链接信息
+### 系统调用
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_create.c)
+```C++
+//创建子线程
+/*一般情况下，main函数执行的线程为主线程，其余创建的线程称之为子线程
+#include <pthread.h>
+int pthread_create(pthread_t *thread,const pthread_attr_t *attr,void *(*start_routine)(void*),void* arg);
+    -功能：创建一个子线程
+    -参数：
+        -thread:传出参数，线程创建成功后，子线程的线程id被写到该变量中
+        -attr:需要设置线程的属性，一般使用默认值NULL
+        -start_routine:函数指针，该函数是子线程需要处理的逻辑代码
+        -arg:给第三个参数使用，传参
+    -返回值：
+        成功返回0,失败返回错误号
+        返回的错误号信息使用char* strerrot(int errnum)进行解析
+*/
+```
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_exit.c)
+```C++
+//线程的退出
+/*
+#include <pthread.h>
+
+void pthread_exit(void *retval);
+    -功能：终止一个线程，在哪个线程中调用，就表示终止哪个线程
+    -参数：
+        retval:需要传递一个指针作为返回值，在pthread_join中可以获取到
+pthread_h pthread_self(void);
+    -功能：返回当前的线程ID
+int pthread_equal(pthread_t t1,pthread_t t2);
+    -功能：比较两个线程ID是否相同
+*/
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+void* fun(void* args){
+    printf("child thread create! tie:%ld\n",pthread_self());
+    pthread_exit(NULL);
+}
+
+int main(){
+    pthread_t tid;
+    int ret = pthread_create(&tid,NULL,fun,NULL);
+    if(ret==-1){
+        perror("pthread_create");
+        exit(0);
+    }
+    for(int i=0;i<100;i++){
+        printf("%d\n",i);
+    }
+    printf("main thread tid:%d\n",pthread_self());
+    pthread_exit(NULL);
+    printf("main thread exit!");//由于主线程已经退出了，因此不会执行输出
+    return 0;
+}
+```
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_cancel.c)
+```C++
+//取消线程
+/*
+#include <pthread.h>
+int pthread_cancel();
+    -功能：取消线程(让线程终止)
+        取消某个线程,可以终止某个线程的运行，但是不是立即终止，而是当子线程执行到一个取消点之后，线程才会终止
+        取消点：系统规定好的一些系统调用，可以粗略的认为是用户区到内核区的切换，这个位置称之为取消点
+*/
+```
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_join.c)
+```C++
+//回收线程
+/*
+#include <pthread>
+int pthread_join(pthread_t thread,void **retval);
+    -功能：和一个已经终止的线程进行连接
+        回收子线程的资源
+        特点：是阻塞函数，调用一次回收一个子线程，一般在主线程中使用
+    -参数：
+        -thread:需要回收的子线程id
+        -retval:接收子线程退出时的返回值
+            这里传入的是一个二级指针，因为我们想要修改的是一个指针的值，当然要通过另外一个指针指向其
+*/
+#include <stdlib.h>
+#include <pthread.h>
+#include <stdio.h>
+
+int val=10;
+
+void* callback(void *args){
+    printf("child create!tid:%ld\n",pthread_self());
+    pthread_exit((void**)&val);
+}
+
+int main(){
+    pthread_t tid;
+    int ret = pthread_create(&tid,NULL,callback,NULL);
+    if(ret!=0){
+        perror("pthread_create");
+        exit(0);
+    }
+    int *pthread_retval;
+    ret = pthread_join(tid,(void**)&pthread_retval);
+    if(ret!=0){
+        perror("pthread_join");
+        exit(0);
+    }
+    printf("collect child thread!return val=%d\n",*pthread_retval);
+    return 0;
+}
+```
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_detach.c)
+```C++
+//线程分离
+/*
+#include <pthread.h>
+
+int pthread_detach(pthread_t thread){
+    -功能：分离一个线程。被分离的线程在终止的时候，会自动释放资源返回给系统
+        1.不能多次分离，会产生不可预料的行为
+        2.不能去连接一个已经分离的线程，会报错
+    -参数：需要分离的线程tid   
+}
+*/
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <string.h>
+
+void* callback(void* args){
+    printf("child thread create!tid:%ld\n",pthread_self());
+    pthread_exit(NULL);
+}
+
+int main(){
+    pthread_t tid;
+    int ret = pthread_create(&tid,NULL,callback,NULL);
+    if(ret==-1){
+        perror("pthread_create");
+        exit(0);
+    }
+    printf("tid:%ld,main tid:%ld\n",tid,pthread_self());
+    ret = pthread_detach(tid);
+    if(ret!=0){
+        perror("detach");
+        exit(0);
+    }
+    ret = pthread_join(tid,NULL);
+    if(ret!=0){
+        printf("error:%s\n",strerror(ret));
+        exit(0);
+    }
+    sleep(2);
+    return 0;
+}
+```
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession03_TheadBasic/lession01_thread/pthread_attr.c)
+```C++
+\\设置线程属性
+/*
+#include <pthread>;
+int pthread_attr_init(pthread_attr_t *attr);
+    -初始化线程属性变量
+int pthread_attr_destroy(pthread_attr_t *attr);
+    -释放线程属性的资源
+int pthread_attr_getdetachstate(const pthread_attr_t *attr,int *detachstate);
+    -获取线程分离的状态属性
+int pthread_attr_setdetachstate(pthread_attr_t *attr,int detachstate);
+    -设置线程分离的状态属性
+*/
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void* callback(void* args){
+    printf("child thread create!tid=%ld\n",pthread_self());
+    return NULL;
+}
+
+int main(){
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
+
+    pthread_t tid;
+    pthread_create(&tid,&attr,callback,NULL);
+
+    size_t size;
+    pthread_attr_getstacksize(&attr,&size);
+    printf("thread stack size=%d\n",size);
+
+    int ret = pthread_join(tid,NULL);
+    if(ret!=0){
+        printf("errorno:%s\n",strerror(ret));
+        // exit(0);
+    }
+    pthread_attr_destroy(&attr);
+    return 0;
+}
+```
+### 线程同步
+[笔记](https://github.com/gav1n-cheung/MySQL/tree/main/ServerBasic/lession03_TheadBasic/lession02_thread_mutex)
+#### 概述
+* 线程的主要优势在于，能够通过全局变量来共享信息。不过这种便捷是有代价的：必须确保多个线程不会同时修改同一变量，或者某一线程不会读取正在由其他线程修改的变量
+* 临界区是指访问某一共享资源的代码片段，并且这段代码的执行应为原子操作(不可分割，不可中断)，也就是同时访问同一共享资源的其他线程不应中断此片段的执行
+* 线程同步：即当一个线程在内存进行操作时，其他线程都不可以对这个内存地址进行操作，直到该线程完成操作，其他线程才能对该内存地址进行操作，而其他线程仍然处于等待状态。
+#### 互斥量/互斥锁
+* 为避免线程共享共享变量时出现问题，可以使用互斥量(mutex)来确保同时仅有一个线程可以访问某项共享资源。可以使用互斥量来保证对任意共享资源的原子访问
+* 互斥量有两种状态：已锁定(locked)和未锁定(unlocked)。任何时候，至多只有一个线程可以锁定该互斥量。试图对已经锁定的某一互斥量再次加锁，将可能阻塞线程或者报错失败，具体取决于加锁时采用的方式
+* 一旦线程锁定互斥量，随即称为该互斥量的所有者，只有所有者才能给互斥量解锁。一般情况下。对每一共享资源(可能由多个相关变量组成)会使用不同的互斥量，每一线程在访问同一资源时将采用如下协议：
+* * 针对共享资源锁定互斥量
+* * 访问共享资源
+* * 对互斥量解锁
+#### mutex的使用
+```C++
+//互斥锁
+/*
+互斥量的类型:pthread_mutex_t
+int pthread_mutex_init(pthread_mutex_t *restrict mutex,const pthread_mutexattr_t *restrict attr);
+    -初始化互斥量
+    -参数:
+        -mutex:需要初始化的互斥量
+        -attr:互斥量相关的属性，一般使用NULL
+    -restrict:C语言的修饰符，被修饰的指针不能被另外的一个指针进行操作
+
+int pthread_mutex_destory(pthread_mutex_t *mutex);
+    -释放互斥量的资源
+int pthread_mutex_lock(pthread_mutex_t *mutex);
+    -加锁，阻塞的，如果有一个线程加锁了，则其他的线程智能阻塞等待
+int pthread_mutex_trylock(pthread_mutex_t *mutex);
+    -尝试加锁，如果加锁失败，则不会阻塞，直接返回
+int pthread_mutext_unlock(pthread_mutex_t *mutex);
+    -释放锁，解锁
+*/
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
+//创建全局变量，所有线程都共享同一份该资源
+int tickets = 100;
+int tickets1 = 100;
+
+//创建一个互斥量
+pthread_mutex_t mutex;
+pthread_mutex_t mutex1;
+
+void *sellticket(void *arg)
+{
+    while (1)
+    {
+        //临界区加锁
+        pthread_mutex_lock(&mutex);
+        if (tickets > 0)
+        {
+            printf("%ld正在卖第%d票\n", pthread_self(), tickets);
+            tickets--;
+        }
+        else
+        {
+            //解锁
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
+        sleep(100);
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(NULL);
+}
+
+void *selltickt1(void *arg)
+{
+    while (1)
+    {   
+        pthread_mutex_lock(&mutex1);
+        printf("票1操作线程%ld正在卖第%d票\n", pthread_self(), tickets);
+        pthread_mutex_unlock(&mutex1);
+        sleep(1);
+    }
+    pthread_exit(0);
+}
+
+int main()
+{
+    pthread_mutex_init(&mutex, NULL);
+    pthread_mutex_init(&mutex1, NULL);
+
+    pthread_t tid1, tid2, tid3;
+    pthread_create(&tid1, NULL, sellticket, NULL);
+    pthread_create(&tid2, NULL, sellticket, NULL);
+    pthread_create(&tid3, NULL, selltickt1, NULL);
+
+    pthread_detach(tid1);
+    pthread_detach(tid2);
+    pthread_detach(tid3);
+    pthread_exit(NULL);
+    pthread_mutex_destroy(&mutex);
     return 0;
 }
 ```
