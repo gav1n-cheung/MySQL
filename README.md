@@ -1,16 +1,24 @@
 # 使用腾讯云搭建服务器(MySQL)
+
 ## 去腾讯云买一个云服务器
+
 挑个最便宜的先试试
 我选用的是CentOs7的系统
+
 ## 连接你的服务器
+
 我还是喜欢喜欢终端ssh，不想配其他的工具，则连接==公网ip==即可，默认用户为root，去管理界面修改密码后登录使用
+
 ```
 ssh root@yourIp
 enter your password
 input "yes"
 ```
+
 ## 将你的服务器终端切换为zsh
+
 (bash不是狗都不用?)安装zsh并安装oh-my-zsh，傻瓜操作
+
 ```
 yum install zsh -y
 chsh -s /bin/zsh root
@@ -21,32 +29,45 @@ wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - 
 /bin/cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc
 source ~/.zshrc
 ```
+
 切换zsh主题，花里胡哨的例如这种
 ![zsh theme bullet-train](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-51.png)
 正常一点的例如这种
 ![zsh theme jonathan](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-56.png)
+
 ## 安装MySQL
+
 [来自segmentfault的强力小磊哥](https://segmentfault.com/a/1190000022843273)
 按照这个来会有点问题，在安装MySQL时会不成功，请参考[这个(打不开就翻墙)](https://forums.cpanel.net/threads/cpanel-whm-update-failure-in-upcp-script-mysql-5-7-community-server-yum-issue.697225/)
 按照思否的教程来的话，你的新建账户已经开启了权限，可以远程访问，那下面就要开启远程访问
+
 ## 远程访问腾讯云上的MySQL
+
 ### 开放3306端口
+
 [来自Laravel社区的truesnow](https://learnku.com/articles/13551/tencent-cloud-server-mysql-remote-connection-settings)
 在你自己的主机上安装MySQL后，使用以下命令来远程连接云服务器上的MySQL
+
 ```
 mysql -h ipaddress -uusrname -ppassword
 ```
+
 例如下面这样
 ![MySQL remote](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-12.png)
 如果你装过Oracle，你会感叹这个安装真是太简单，太现代化了(想起来oracle的监听程序我就想吐)。
+
 ## 使用可视化软件远程管理MySQL
+
 如果是轻量化的操作可以选择[Beekeeper Studio](https://www.beekeeperstudio.io/)
 如果是有其他的需求，可以看一下这个推荐[来自卡拉云的蒋川](https://kalacloud.com/blog/best-mysql-gui-tools/)
 ![Beekeeper Studio](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-17.png)
+
 ## 使用编程语言远程连接MySQL
+
 这里指的是Linux下Cmake编译的CPP项目
 这里我使用的客户端是Ubuntu 20.04LTS
 请先安装MySQL,不推荐自己编译
+
 ```
 #include <iostream>
 #include <mysql/mysql.h> //mysql提供的函数接口头文件
@@ -80,7 +101,9 @@ int main() {
     return 0;
 }
 ```
+
 CMakeLists.txt如下：
+
 ```
 cmake_minimum_required(VERSION 3.20)
 project(TestConnect)
@@ -92,11 +115,16 @@ target_link_libraries(${PROJECT_NAME} libmysqlclient.so)
 ```
 
 # 使用VSCode进行远程开发
+
 ## 安装VSCode
+
 这没啥好说的
+
 ## 安装Remote Develop插件  
+
 ![安装插件](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-15.png)  
 进行测试
+
 ```
 F1
 搜索 remote-ssh->Add new ssh host
@@ -106,7 +134,9 @@ F1
 如果提示远程计算机也需要安装插件，则按照提示安装即可，如果安装较慢(这取决于你本机的网络)，
 可以在网页上下载离线包，拖到远程计算机内离线安装
 ```
+
 ## 使用公私钥配对进行远程连接
+
 ```
 本机生成密钥后将.pub内容复制到远程计算机下~/.ssh/authorized_keys中即可，没有这个文件就新建一个
 本机F1
@@ -120,12 +150,18 @@ Host (连接名称)
     Port 22(ssh连接端口，默认为22，如果你用其他端口实现别的操作，例如穿透，修改为你使用的端口)
     IdentityFile "~/.ssh/id_rsa"(你创建的私钥的位置，默认就是这个)
 ```
+
 这样配完了之后，在这里找到你的远程连接,右键选择连接方式即可  
 ![配置完成的连接](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-28.png)
+
 # 使用socket进行数据传输
+
 这里使用的是C风格的代码
+
 ## 本地测试
+
 ### server端
+
 ```
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -175,7 +211,9 @@ int main(){
     return 0;
 }
 ```
+
 ### client端
+
 ```
 #include <stdio.h>
 #include <sys/socket.h>
@@ -202,11 +240,15 @@ int main(){
     return 0;
 }
 ```
+
 选择你的编译方式编译出来即可
 
 ## 进行公网的传输
+
 参考csdn的来杯开水，点击[这里](https://blog.csdn.net/HHHSSD/article/details/117410122)查看原文
+
 ### 开启你的8000端口用于传输数据
+
 ```
 开启8000端口：
 firewall-cmd --zone=public --add-port=8000/tcp --permanent
@@ -216,8 +258,11 @@ firewall-cmd --reload
 firewall-cmd --list-ports
 最后在你的云服务器上开启对应8000端口的安全组即可
 ```
+
 ### server端
+
 放在你的云服务器上
+
 ```c++
 #include<stdio.h>
 #include <unistd.h>
@@ -312,7 +357,9 @@ int main()
  
 }
 ```
+
 ### client端
+
 ```c++
 #include<stdio.h>
 #include <unistd.h>
@@ -953,10 +1000,3 @@ string GetPointCloudData(){
     return str;
 }
 ```
-
-
-
-
-
-
-
