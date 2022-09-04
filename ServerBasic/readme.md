@@ -1141,8 +1141,6 @@ int main()
     return 0;
 }
 ```
-<<<<<<< HEAD
-=======
 #### 死锁
 * 有时候，一个县城需要访问两个或者更多不同的共享资源，而每个资源又都由不同的互斥量管理。当超过一个线程加锁同一组互斥量时，就有可能发生死锁。
 * 两个或者两个以上的进程在执行过程中，因争夺共享资源而造成的一种互相等待的现象，若无外力作用，它们都将无法推进下去。此时称系统处于死锁状态或者系统发生了死锁。
@@ -1328,7 +1326,77 @@ int main()
 ### 生产者消费者模型
 [笔记](https://github.com/gav1n-cheung/MySQL/tree/main/ServerBasic/lession03_TheadBasic/lession03_customer)
 
+#### 互斥锁实现的生产者消费者模型
+```C++
+/*
+使用互斥锁的生产者消费者模型
+*/
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
 
+//创建一个互斥量
+pthread_mutex_t mutex;
+//创建一个票结构体
+struct Node{
+    int val;
+    Node* next;
+    Node(int _val):val(_val),next(nullptr){};
+};
+
+Node* head = nullptr;
+
+void* productor(void* args){
+    while(1){
+        pthread_mutex_lock(&mutex);
+        Node *newNode = new Node(rand()%1000);
+        newNode->next = head;
+        head = newNode;
+        std::cout<<"add node,num:"<<head->val<<",tid:"<<pthread_self()<<std::endl;
+        pthread_mutex_unlock(&mutex);
+        usleep(100);
+    }
+    pthread_exit(NULL);
+}
+
+void* customer(void* arg){
+    while(1){
+        pthread_mutex_lock(&mutex);
+        Node* tmp = head;
+        if(head){
+            head = head->next;
+            std::cout<<"remove node,num:"<<tmp->val<<",tid:"<<pthread_self()<<std::endl;
+            delete(tmp);
+            usleep(100);
+        }
+        pthread_mutex_unlock(&mutex);
+    }
+    pthread_exit(NULL);
+}
+
+
+int main(){
+    //初始化互斥量
+    pthread_mutex_init(&mutex,NULL);
+    //创建5个生产者线程，5个消费者线程
+    pthread_t ptids[5],ctids[5];
+    //初始化并分离线程
+    for(int i=0;i<5;i++){
+        pthread_create(&ptids[i],NULL,productor,NULL);
+        pthread_create(&ctids[i],NULL,customer,NULL);
+    }
+    for(int i=0;i<5;i++){
+        pthread_detach(ptids[i]);
+        pthread_detach(ctids[i]);
+    }
+    while(1){
+        sleep(10);
+    }
+    pthread_mutex_destroy(&mutex);
+    pthread_exit(NULL);
+    return 0;
+}
+```
 
 
 #### 条件变量
@@ -1348,4 +1416,3 @@ pthread_cond_t
         -唤醒所有等待的线程
 */
 ```
->>>>>>> c85e0087e451996bbc15c1bbc04a1364f37bb665
