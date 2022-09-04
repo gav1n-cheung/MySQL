@@ -1428,6 +1428,19 @@ pthread_cond_t
     int pthread_cond_broadcast(pthread_cond_t *cond);
         -唤醒所有等待的线程
 */
+/*
+条件变量的类型 pthread_cond_t
+    int pthread_cond_init(pthread_cond_t *restrict cond, const pthread_condattr_t *restrict attr);
+    int pthread_cond_destroy(pthread_cond_t *cond);
+    int pthread_cond_wait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex);
+        -阻塞函数，调用了该函数，线程会阻塞
+    int pthread_cond_timedwait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime);
+        -等待多长时间，调用了该函数，线程会阻塞设定的时间
+    int pthread_cond_signal(pthread_cond_t *cond);
+        -唤醒一个或多个等待的线程
+    int pthread_cond_broadcast(pthread_cond_t *cond);
+        -唤醒所有等待的线程
+*/
 #include<stdio.h>
 #include<pthread.h>
 #include<unistd.h>
