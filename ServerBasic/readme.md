@@ -1141,3 +1141,211 @@ int main()
     return 0;
 }
 ```
+<<<<<<< HEAD
+=======
+#### 死锁
+* 有时候，一个县城需要访问两个或者更多不同的共享资源，而每个资源又都由不同的互斥量管理。当超过一个线程加锁同一组互斥量时，就有可能发生死锁。
+* 两个或者两个以上的进程在执行过程中，因争夺共享资源而造成的一种互相等待的现象，若无外力作用，它们都将无法推进下去。此时称系统处于死锁状态或者系统发生了死锁。
+* 死锁的几种场景：
+* * 忘记释放锁
+* * 重复加锁
+* * 多线程多锁，抢占锁资源
+```C++
+/*
+重复加锁导致的死锁
+*/
+#include <pthread.h>
+#include <iostream>
+#include <unistd.h>
+
+int value = 100;
+
+pthread_mutex_t mutex;
+
+void *fun(void *arg)
+{
+    while (1){
+        pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);
+        std::cout << "data " << value<<" tid="<<pthread_self()<<std::endl;
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+int main()
+{
+    pthread_mutex_init(&mutex, NULL);
+
+    pthread_t tid1, tid2, tid3;
+    pthread_create(&tid1, NULL, fun, NULL);
+    pthread_create(&tid2, NULL, fun, NULL);
+    pthread_create(&tid3, NULL, fun, NULL);
+
+    pthread_detach(tid1);
+    pthread_detach(tid2);
+    pthread_detach(tid3);
+
+    std::cout << "create child! tid " << tid1 << std::endl;
+    std::cout << "create child! tid " << tid2 << std::endl;
+    std::cout << "create child! tid " << tid3 << std::endl;
+
+    pthread_exit(NULL);
+    pthread_mutex_destroy(&mutex);
+    return 0;
+}
+```
+```C++
+//由于相互加锁导致的死锁
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
+
+int value = 100;
+
+pthread_mutex_t mutex1;
+pthread_mutex_t mutex2;
+
+void* fun1(void* args){
+    while(1){
+        pthread_mutex_lock(&mutex1);
+        sleep(1);
+        pthread_mutex_lock(&mutex2);
+        std::cout<<"pthread tid"<<pthread_self()<<std::endl;
+        pthread_mutex_unlock(&mutex1);
+        pthread_mutex_unlock(&mutex2);
+    }
+    pthread_exit(NULL);
+
+}
+void* fun2(void* args){
+    while(1){
+        pthread_mutex_lock(&mutex2);
+        pthread_mutex_lock(&mutex1);
+        std::cout<<"pthread tid"<<pthread_self()<<std::endl;
+        pthread_mutex_unlock(&mutex2);
+        pthread_mutex_unlock(&mutex1);
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+
+int main(){
+    pthread_mutex_init(&mutex1,NULL);
+    pthread_mutex_init(&mutex2,NULL);
+
+    pthread_t tid1,tid2;
+
+    pthread_create(&tid1,NULL,fun1,NULL);
+    pthread_create(&tid2,NULL,fun2,NULL);
+
+    pthread_exit(NULL);
+    
+    pthread_mutex_destroy(&mutex1);
+    pthread_mutex_destroy(&mutex2);
+
+    return 0;
+}
+```
+
+#### 读写锁
+* 当有一个线程已经持有互斥锁时，互斥锁将所有试图进入临界区的线程都阻塞住。但是考虑一种情形，当前持有互斥锁的线程只是要读访问共享资源，而同时有其他几个线程也想读取这个共享资源，但是由于互斥锁的排他性，所有其他线程都无法获取锁，就是无法读访问共享资源了，但是实际上多个线程同时读访问共享资源并不会导致问题
+* 在对数据的读写操作中，更多的是读操作，写操作较少，例如对数据库的读写应用。为了满足当前能够允许多个读出，但只允许一个写入的需求，线程提供了读写锁来实现。
+* 读写锁的特点：
+* * 如果有其他线程读数据，则允许其他线程执行读操作，但不允许写操作
+* * 如果有其他线程写线程，则其他线程都不允许读、写操作
+* * 写是独占的，写的优先级较高
+
+```C++
+\\读写锁实例
+/*
+    读写锁的类型 pthread_rwlock_t
+    int pthread_rwlock_init(pthread_rwlock_t *restrict rwlock,const pthread_rwlockattr_t *restrict attr);
+    int pthread_rwlock_destroy(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_rdlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_tryrdlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_wrlock(pthread_rwlock_t *rwlock);
+    int pthread_rwlock_trywrlock(pthread_rwlock_t *rwlock);
+    创建八个线程，操作同一个全局变量
+    3个线程不定时写这个全局变量，5个线程不定时的读这个全局变量
+*/
+
+#include <iostream>
+#include <unistd.h>
+#include <pthread.h>
+
+int num = 1;
+pthread_rwlock_t rwlock;
+pthread_mutex_t mutex;
+
+void *writeNum(void *args)
+{
+    while (1)
+    {
+        pthread_rwlock_wrlock(&rwlock);
+        num++;
+        std::cout<<"++write,tid:"<<pthread_self()<<"num:"<<num<<std::endl;
+        pthread_rwlock_unlock(&rwlock);
+        usleep(100);
+    }
+    pthread_exit(NULL);
+}
+
+void *readNum(void *args)
+{
+    while(1){
+        pthread_rwlock_rdlock(&rwlock);
+        std::cout<<"==read,tid:"<<pthread_self()<<"num:"<<num<<std::endl;
+        pthread_rwlock_unlock(&rwlock);
+        usleep(100);
+    }
+    pthread_exit(NULL);
+}
+
+int main()
+{
+    pthread_rwlock_init(&rwlock, NULL);
+
+    pthread_t wtids[3], rtids[5];
+    for (int i = 0; i < 3; i++)
+    {
+        pthread_create(&wtids[i], NULL, writeNum, NULL);
+        pthread_detach(wtids[i]);
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        pthread_create(&rtids[i], NULL, readNum, NULL);
+        pthread_detach(rtids[i]);
+    }
+    pthread_exit(NULL);
+    pthread_rwlock_destroy(&rwlock);
+    return 0;
+}
+```
+### 生产者消费者模型
+[笔记](https://github.com/gav1n-cheung/MySQL/tree/main/ServerBasic/lession03_TheadBasic/lession03_customer)
+
+
+
+
+#### 条件变量
+``` C++
+//系统变量
+/*
+pthread_cond_t
+    int pthread_cond_init(pthread_cond_t *restrict cond, const pthread_condattr_t *restrict attr);
+    int pthread_cond_destroy(pthread_cond_t *cond);
+    int pthread_cond_wait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex);
+        -阻塞函数，调用了该函数，线程会阻塞
+    int pthread_cond_timedwait(pthread_cond_t *restrict cond,pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime);
+        -等待多长时间，调用了该函数，线程会阻塞设定的时间
+    int pthread_cond_signal(pthread_cond_t *cond);
+        -唤醒一个或多个等待的线程
+    int pthread_cond_broadcast(pthread_cond_t *cond);
+        -唤醒所有等待的线程
+*/
+```
+>>>>>>> c85e0087e451996bbc15c1bbc04a1364f37bb665
