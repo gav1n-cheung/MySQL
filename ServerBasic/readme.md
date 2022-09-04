@@ -1441,67 +1441,61 @@ pthread_cond_t
     int pthread_cond_broadcast(pthread_cond_t *cond);
         -唤醒所有等待的线程
 */
-#include<stdio.h>
-#include<pthread.h>
-#include<unistd.h>
-#include<stdlib.h>
+/*
+使用互斥锁的生产者消费者模型
+*/
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
 
 //创建一个互斥量
 pthread_mutex_t mutex;
-//创建条件变量
-pthread_cond_t cond;
-
-
+//创建一个票结构体
 struct Node{
     int val;
-    struct Node* next;
+    Node* next;
+    Node(int _val):val(_val),next(nullptr){};
 };
 
-struct Node* head = NULL;
+Node* head = nullptr;
 
-void* producer(void* arg){
+void* productor(void* args){
     while(1){
         pthread_mutex_lock(&mutex);
-        struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+        Node *newNode = new Node(rand()%1000);
         newNode->next = head;
         head = newNode;
-        newNode->val = rand()%1000;
-        printf("add node,num:%d,tid:%ld\n",newNode->val,pthread_self());
-        //只要生产了一个，就通知消费者消费
-        pthread_cond_signal(&cond);
+        std::cout<<"add node,num:"<<head->val<<",tid:"<<pthread_self()<<std::endl;
         pthread_mutex_unlock(&mutex);
         usleep(100);
     }
-    return NULL;
+    pthread_exit(NULL);
 }
 
 void* customer(void* arg){
     while(1){
         pthread_mutex_lock(&mutex);
-        //保存头节点指针
-        struct Node* tmp = head;
-        //判断容器是否有数据
-        if(head==NULL){
-            //没有数据，需要等待
-            pthread_cond_wait(&cond,&mutex);//条件变量拿到互斥量会先进行解锁，不会阻塞其他互斥量锁死的临界区
+        Node* tmp = head;
+        if(head){
+            head = head->next;
+            std::cout<<"remove node,num:"<<tmp->val<<",tid:"<<pthread_self()<<std::endl;
+            delete(tmp);
+            usleep(100);
         }
-        head = head->next;
-        printf("del node,num :%d,tid:%ld\n",tmp->val,pthread_self());
-        free(tmp);
-        usleep(100);
         pthread_mutex_unlock(&mutex);
     }
-    return NULL;
+    pthread_exit(NULL);
 }
 
 
 int main(){
+    //初始化互斥量
     pthread_mutex_init(&mutex,NULL);
-    pthread_cond_init(&cond,NULL);
-    //创建5个生产者线程，和5个消费者线程
+    //创建5个生产者线程，5个消费者线程
     pthread_t ptids[5],ctids[5];
+    //初始化并分离线程
     for(int i=0;i<5;i++){
-        pthread_create(&ptids[i],NULL,producer,NULL);
+        pthread_create(&ptids[i],NULL,productor,NULL);
         pthread_create(&ctids[i],NULL,customer,NULL);
     }
     for(int i=0;i<5;i++){
@@ -1512,7 +1506,6 @@ int main(){
         sleep(10);
     }
     pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&cond);
     pthread_exit(NULL);
     return 0;
 }
