@@ -31,9 +31,9 @@ source ~/.zshrc
 ```
 
 切换zsh主题，花里胡哨的例如这种
-![zsh theme bullet-train](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-51.png)
+![zsh theme bullet-train](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-03_14-51.png)
 正常一点的例如这种
-![zsh theme jonathan](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_14-56.png)
+![zsh theme jonathan](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-03_14-56.png)
 
 ## 安装MySQL
 
@@ -53,14 +53,14 @@ mysql -h ipaddress -uusrname -ppassword
 ```
 
 例如下面这样
-![MySQL remote](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-12.png)
+![MySQL remote](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-03_15-12.png)
 如果你装过Oracle，你会感叹这个安装真是太简单，太现代化了(想起来oracle的监听程序我就想吐)。
 
 ## 使用可视化软件远程管理MySQL
 
 如果是轻量化的操作可以选择[Beekeeper Studio](https://www.beekeeperstudio.io/)
 如果是有其他的需求，可以看一下这个推荐[来自卡拉云的蒋川](https://kalacloud.com/blog/best-mysql-gui-tools/)
-![Beekeeper Studio](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-03_15-17.png)
+![Beekeeper Studio](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-03_15-17.png)
 
 ## 使用编程语言远程连接MySQL
 
@@ -122,7 +122,7 @@ target_link_libraries(${PROJECT_NAME} libmysqlclient.so)
 
 ## 安装Remote Develop插件  
 
-![安装插件](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-15.png)  
+![安装插件](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-16_09-15.png)  
 进行测试
 
 ```
@@ -152,7 +152,7 @@ Host (连接名称)
 ```
 
 这样配完了之后，在这里找到你的远程连接,右键选择连接方式即可  
-![配置完成的连接](https://github.com/gav1n-cheung/MySQL/blob/main/Picture/2022-05-16_09-28.png)
+![配置完成的连接](https://github.com/gav1n-cheung/MySQL/blob/main/images/2022-05-16_09-28.png)
 
 # 使用socket进行数据传输
 
