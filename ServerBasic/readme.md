@@ -1510,3 +1510,67 @@ int main(){
     return 0;
 }
 ```
+
+## 网络编程
+
+### socket
+
+[笔记](https://github.com/gav1n-cheung/MySQL/blob/main/ServerBasic/lession04_netprogram/lession02_socket/bytetrans.c)
+一般来说网络字节序都是大端字节序，即低地址存放高位数据，高地址存放低位数据。主机字节序一般都是小端字节序，高地址存放低位数据，低地址存放高位数据。因此在网络通信中，我们一般要进行字节序的转换防止数据产生不同的解释。
+
+```C++
+#include <arpa/inet.h>
+//转换端口(因为端口为short类型)
+uint16_t htons(uint16_t hostshort);//主机字节序转换为网络字节序(小端-大端)
+uint16_t ntohs(uint16_t netshort);//网络字节序转换为主机字节序(大端-小端)
+//转IP(因为ip为32位,4个字节，为long类型)
+uint32_t htonl(uint32_t hostlong);//主机字节序转换为网络字节序(小端-大端)
+uint32_t ntohs(uint32_t netlong)l//网络字节序转换为主机字节序(大端-小端)
+```
+
+使用联合体union来判断本机的字节序
+
+```C++
+#include <iostream>
+#include <arpa/inet.h>
+
+//使用代码检查当前主机的字节序
+
+int main(){
+    union 
+    {
+        /* data */
+        short value;
+        char bytes[sizeof(short)];
+    }test;
+
+    test.value = 0x0102;
+    if((test.bytes[0]==1)&&(test.bytes[1]==2)){
+        std::cout<<"大端字节序"<<std::endl;
+    }else if((test.bytes[0]==2)&&(test.bytes[1]==1)){
+        std::cout<<"小端字节序"<<std::endl;
+    }else{
+        std::cout<<"未知"<<std::endl;
+    }
+    return 0;
+}
+```
+
+更简单的判断字节序的方法
+
+```C++
+#include <iostream>
+#include <arpa/inet.h>
+
+//使用代码检查当前主机的字节序
+
+int main(){
+    int a = 1;
+    if(((char*)&a)[0]==1){
+        std::cout<<"小端"<<std::endl;
+    }else{
+        std::cout<<"大端"<<std::endl;
+    }
+    return 0;
+}
+```
