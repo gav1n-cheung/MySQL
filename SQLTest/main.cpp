@@ -46,7 +46,6 @@ int main() {
     if (mysql_query(&mysql, sql.c_str())) perror("sql query");
     else cout<<"query success"<<endl;
     sql = "insert into point_cloud_data(x,y,z,r,g,b) values";
-
     mysql_close(&mysql);
 
     return 0;

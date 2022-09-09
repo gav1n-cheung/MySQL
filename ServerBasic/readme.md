@@ -1574,3 +1574,115 @@ int main(){
     return 0;
 }
 ```
+
+#### 字节序转换函数
+
+```bash
+h  - host 主机
+to - 转换的目标指向
+n  - network 网络
+s  - short/unsigned short
+l  - long/unsigned long
+```
+
+```C
+/*
+网络通信时，需要将主机字节序转换成网络字节序(大端),另外一端获取到数据之后根据情况将网络字节序转换成主机字节序
+转换端口(2个字节-short)
+uint16_t htons(uint16_t hostshort); //主机字节序-网络字节序
+uint16_t ntohs(uint16_t netshort);  //网络字节序-主机字节序
+转换ip地址(4个字节-long)
+uint32_t htonl(uint32_t hostlong);  //主机字节序-网络字节序
+uint32_t ntohl(uint32_t netlont);   //网络字节序-主机字节序
+*/
+#include<stdio.h>
+#include<arpa/inet.h>
+
+int main(){
+
+    //htons 转换端口
+    unsigned short a = 0x0102;
+    unsigned short b = htons(a);
+    printf("a: %x\n",a);
+    printf("b: %x\n",b);
+
+    //htonl 转换ip
+    char buf[4] = {192,168,1,100};
+    int num = *(int*) buf;
+    unsigned int sum = htonl(num);
+    unsigned char *p = (char *)&sum;
+    printf("%d,%d,%d,%d\n",*p,*(p+1),*(p+2),*(p+3));
+
+    //ntohs 转换端口
+    unsigned char buf1[4] = {192,168,1,1};
+    int num1 = *(int*)buf1;
+    int sum1 = ntohl(num1);
+    unsigned char *ptr = (unsigned char*) &sum1;
+    unsigned char *ptr1 = (unsigned char*) &num1;
+    printf("%d,%d,%d,%d\n",*ptr1++,*ptr1++,*ptr1++,*ptr1++);//192,168,1,1 这里主机默认就是小端，高地址位被存储到高地址内存中去了
+    printf("%d,%d,%d,%d\n",*ptr,*(ptr+1),*(ptr+2),*(ptr+3));//1,1,168,192 因此这里将网络序转换为本机的字节序，就是将192,168,1,1作为大端来操作的
+                                                        //192作为数据的高位被存储到到了内存的高位中，即最后的位置去了，
+    //ntohl 
+    return 0;
+}
+```
+
+#### socket专用地址
+
+常用的用于保存socket信息的数据结构为sockaddr_in(ipv4),sockaddr_in6(ipv6)
+
+```C++
+#include <iostream>
+#include <arpa/inet.h>
+
+int main(){
+    //将socket地址放入结构体中
+    sockaddr_in saddr;
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = inet_addr("127.0.01");
+    saddr.sin_port = 8001;
+    //将socket地址重新解析出来
+    char ip[16];
+    inet_ntop(AF_INET,&saddr.sin_addr.s_addr,ip,sizeof(ip));
+    unsigned short port = ntohs(saddr.sin_port);
+    std::cout<<"ip:"<<ip<<" port:"<<port<<std::endl;
+    return 0;
+}
+```
+
+### TCP通信流程
+
+#### 通信流程
+
+```bash
+//TCP和UDP -> 传输层的协议
+UDP:用户数据报协议，面向无连接，可以单播、多播、广播。面向数据报，不可靠
+TCP:传输控制协议，面向连接，可靠的，基于字节流，仅支持单播传输
+
+                          UDP                   TCP
+是否创建连接                无                      是
+是否可靠                    否                      是
+连接的对象个数          一对一，一对多，多对多       一对一
+传输的方式                  面向数据报              面向字节流
+头部开销                  8个字节                   最少20个字节
+适用场景                 实时应用(视频会议，直播)       可靠性高的应用(文件传输)
+```
+
+```C++
+//TCP通信的流程(服务器端)
+1.创建一个用于监听的套接字lfd
+    -监听：监听有客户端的连接
+    -套接字：这个套接字就是一个文件描述符
+2.将这个监听文件描述符与本地的IP和端口绑定(IP和端口就是服务器的地址)
+    -客户端连接时使用的就是这个IP和端口
+3.设置监听，监听文件描述符开始工作
+4.阻塞等待，当有客户端发起连接，解除阻塞，接收客户端的连接，得到一个与客户端通信的套接字cfd
+5.通信
+    -接收数据
+    -发送数据
+6.通信结束，断开连接
+```
+
+```C++
+
+```
