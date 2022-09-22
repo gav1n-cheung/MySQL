@@ -41,6 +41,13 @@ source ~/.zshrc
 按照这个来会有点问题，在安装MySQL时会不成功，请参考[这个(打不开就翻墙)](https://forums.cpanel.net/threads/cpanel-whm-update-failure-in-upcp-script-mysql-5-7-community-server-yum-issue.697225/)
 按照思否的教程来的话，你的新建账户已经开启了权限，可以远程访问，那下面就要开启远程访问
 
+```
+#include <mysql/mysql.h>
+引用该头文件报错时，在debian/ubuntu下需要
+apt-get install libmysqlclient-dev 
+即可
+```
+
 ## 远程访问腾讯云上的MySQL
 
 ### 开放3306端口
