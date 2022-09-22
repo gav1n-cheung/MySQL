@@ -16,17 +16,17 @@ int main() {
      double t1 = omp_get_wtime();
      MYSQL mysql;
      mysql_init(&mysql);
-     const string host = "localhost";
+     const string host = "43.138.104.62";
      const string user = "cheung";
      const string password = "128veg8A@";
-     const string db = "coal_data";
+     const string db = "lg_data";
      if (!mysql_real_connect(&mysql, host.c_str(), user.c_str(), password.c_str(), db.c_str(), 3306, 0, 0))
          cout << "connect mysql failed!" << mysql_error(&mysql) << endl;
      else
          cout << "connect mysql success!" << endl;
     double t2 = omp_get_wtime();
     int index = 0;
-    string sql = "insert into point_cloud_data(x,y,z,r,g,b) values";
+    string sql = "insert into env_data(x,y,z,r,g,b) values";
     for (auto item: *cloud) {
         char tmp[8*100];
         sprintf(tmp,"(%.3f,%.3f,%.3f,%d,%d,%d),",item.x,item.y,item.z,(int)item.r,(int)item.g,(int)item.b);
